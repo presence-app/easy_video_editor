@@ -897,7 +897,7 @@ class VideoUtils {
                     val bitmap =
                         retriever.getFrameAtTime(
                             positionMs * 1000, // Convert to microseconds
-                            MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                            MediaMetadataRetriever.OPTION_CLOSEST
                         )
                             ?: throw VideoException("Failed to generate thumbnail")
 

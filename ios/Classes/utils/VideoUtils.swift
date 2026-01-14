@@ -320,13 +320,15 @@ class VideoUtils {
         
         return try export(composition: composition, outputURL: outputURL, videoComposition: videoComposition, workItem: workItem)
     }
-    
+
+
+
     // MARK: - Rotate Video
     static func rotateVideo(videoPath: String, rotationDegrees: Float, workItem: DispatchWorkItem? = nil) throws -> String {
         guard FileManager.default.fileExists(atPath: videoPath) else {
             throw VideoError.fileNotFound
         }
-        guard rotationDegrees.truncatingRemainder(dividingBy: 90) == 0 else {
+        guard [0, 90, 180, 270].contains(rotationDegrees) else {
             throw VideoError.invalidParameters
         }
 
@@ -358,56 +360,65 @@ class VideoUtils {
             )
         }
 
-        // Get size and transform
+        // Get natural size and original transform
         let naturalSize = videoTrack.naturalSize
         let originalTransform = videoTrack.preferredTransform
 
-        // Determine final render size based on rotation
-        let isPortrait = abs(rotationDegrees.truncatingRemainder(dividingBy: 180)) == 90
-        let finalSize = isPortrait ? CGSize(width: naturalSize.height, height: naturalSize.width) : naturalSize
+        // Calculate final render size (swap if 90/270 degree rotation)
+        let isPortrait = [90, 270].contains(rotationDegrees)
+        let finalSize = isPortrait ?
+            CGSize(width: naturalSize.height, height: naturalSize.width) :
+            naturalSize
+
         videoComposition.renderSize = finalSize
-
-        // Apply rotation transform
-        var rotationTransform = CGAffineTransform.identity
-
-        switch Int(rotationDegrees) {
-        case 90:
-            rotationTransform = rotationTransform
-                .translatedBy(x: naturalSize.height, y: 0)
-                .rotated(by: .pi / 2)
-        case -90, 270:
-            rotationTransform = rotationTransform
-                .translatedBy(x: 0, y: naturalSize.width)
-                .rotated(by: -.pi / 2)
-        case 180:
-            rotationTransform = rotationTransform
-                .translatedBy(x: naturalSize.width, y: naturalSize.height)
-                .rotated(by: .pi)
-        default:
-            break
-        }
-
-        // Combine original transform with rotation
-        let finalTransform = originalTransform.concatenating(rotationTransform)
-
-        // Set up video composition instructions
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
-        videoComposition.renderScale = 1.0
 
+        // Transform logic
+        var transform = originalTransform
+        if rotationDegrees == 90 {
+            transform = CGAffineTransform(translationX: finalSize.height, y: 0.0).rotated(by: .pi / 2)
+        } else if rotationDegrees == 180 {
+            transform = CGAffineTransform(translationX: finalSize.width, y: finalSize.height).rotated(by: .pi)
+        } else if rotationDegrees == 270 {
+            transform = CGAffineTransform(translationX: 0.0, y: finalSize.width).rotated(by: .pi / 2 * 3)
+        }
+        // Else 0 degrees - keep original transform
+
+        // Setup instructions
         let instruction = AVMutableVideoCompositionInstruction()
         instruction.timeRange = CMTimeRange(start: .zero, duration: asset.duration)
 
         let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compositionVideoTrack)
-        layerInstruction.setTransform(finalTransform, at: .zero)
+        layerInstruction.setTransform(transform, at: .zero)
 
         instruction.layerInstructions = [layerInstruction]
         videoComposition.instructions = [instruction]
 
-        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("rotated_video_\(Date().timeIntervalSince1970).mp4")
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rotated_\(Date().timeIntervalSince1970).mp4")
 
-        return try export(composition: composition, outputURL: outputURL, videoComposition: videoComposition, workItem: workItem)
+        return try export(composition: composition,
+                         outputURL: outputURL,
+                         videoComposition: videoComposition,
+                         workItem: workItem)
     }
-    
+
+    // MARK: - Get Video Rotation
+    private static func getVideoRotation(_ txf: CGAffineTransform) -> Int {
+        var rotation = 0
+        if txf.a == 0 && txf.b == 1.0 && txf.c == -1.0 && txf.d == 0 {
+            rotation = 90 // Portrait
+        } else if txf.a == 0 && txf.b == -1.0 && txf.c == 1.0 && txf.d == 0 {
+            rotation = 270 // PortraitUpsideDown
+        } else if txf.a == 1.0 && txf.b == 0 && txf.c == 0 && txf.d == 1.0 {
+            rotation = 0 // LandscapeRight
+        } else if txf.a == -1.0 && txf.b == 0 && txf.c == 0 && txf.d == -1.0 {
+            rotation = 180 // LandscapeLeft
+        }
+        return rotation
+    }
+
+
     // MARK: - Crop Video
     static func cropVideo(videoPath: String, aspectRatio: String, workItem: DispatchWorkItem? = nil) throws -> String {
         guard FileManager.default.fileExists(atPath: videoPath) else {
@@ -704,6 +715,8 @@ class VideoUtils {
         let asset = AVAsset(url: URL(fileURLWithPath: videoPath))
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
         
         // Convert milliseconds to CMTime
         let time = positionMs.toCMTime

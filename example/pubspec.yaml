@@ -1,5 +1,6 @@
 name: easy_video_editor_example
 description: "Demonstrates how to use the easy_video_editor plugin."
+version: 0.0.5+1
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -28,6 +29,12 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.6
+  video_player: 2.4.2
+  image_picker: 0.8.6+3
+  flutter_plugin_android_lifecycle: 2.0.7  # Last version supporting SDK 34
+
+dependency_overrides:
+  flutter_plugin_android_lifecycle: 2.0.7
 
 dev_dependencies:
   integration_test:

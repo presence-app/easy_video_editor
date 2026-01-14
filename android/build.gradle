@@ -51,7 +51,7 @@ android {
 
     dependencies {
         testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.1.1")
+        testImplementation("org.mockito:mockito-core:5.0.0")
 
         // Media3 dependencies
         implementation "androidx.media3:media3-common:1.4.1"
@@ -59,8 +59,8 @@ android {
         implementation("androidx.media3:media3-muxer:1.4.1")
         
         // Coroutines
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     }
 
     testOptions {
