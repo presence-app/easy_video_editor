@@ -715,6 +715,8 @@ class VideoUtils {
         let asset = AVAsset(url: URL(fileURLWithPath: videoPath))
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
         
         // Convert milliseconds to CMTime
         let time = positionMs.toCMTime
